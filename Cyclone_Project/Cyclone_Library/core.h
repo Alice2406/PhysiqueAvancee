@@ -310,9 +310,7 @@ namespace cyclone {
          */
         real scalarProduct(const Vector3 &vector) const
         {
-            real dot;
-            dot = x * vector.x + y * vector.y + z * vector.z;
-            return dot;
+            return (x * vector.x + y * vector.y + z * vector.z);
         }
 
         /**
@@ -321,7 +319,7 @@ namespace cyclone {
          */
         real operator *(const Vector3 &vector) const
         {
-            return 0;
+            return (x * vector.x + y * vector.y + z * vector.z);
         }
 
         /**
@@ -337,14 +335,13 @@ namespace cyclone {
         /** Gets the magnitude of this vector. */
         real magnitude() const
         {
-            real b = std::sqrt(std::pow(x, 2) + std::pow(y, 2) + std::pow(z, 2));
-            return b;
+            return real_sqrt(x*x + y*y + z*z);
         }
 
         /** Gets the squared magnitude of this vector. */
         real squareMagnitude() const
         {
-            return 0;
+            return (x * x + y * y + z * z);
         }
 
         /** Limits the size of the vector to the given maximum. */

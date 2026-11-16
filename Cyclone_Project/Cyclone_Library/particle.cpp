@@ -29,13 +29,10 @@ void Particle::integrate(real duration)
 
     assert(duration > 0.0);
 
-    
-
-
-
-
-
-
+    position.addScaledVector(velocity, duration);
+    acceleration = acceleration + (forceAccum * inverseMass);
+    velocity.addScaledVector(acceleration, duration);
+    velocity = velocity * std::pow(damping, duration);
 
     // Clear the forces.
     clearAccumulator();
