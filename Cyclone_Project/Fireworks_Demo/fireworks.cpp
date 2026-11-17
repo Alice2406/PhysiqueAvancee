@@ -12,10 +12,11 @@
 
 #include <stdio.h>
 
-#include <cyclone.h>
+#include "../Cyclone_Library/cyclone.h"
 #include "ogl_headers.h"
 #include "app.h"
 #include "timing.h"
+#include <iostream>
 
 static cyclone::Random crandom;
 
@@ -100,12 +101,12 @@ struct FireworkRule
     unsigned payloadCount;
 
     /** The set of payloads. */
-    Payload *payloads;
+    Payload* payloads;
 
     FireworkRule()
-    :
-    payloadCount(0),
-    payloads(NULL)
+        :
+        payloadCount(0),
+        payloads(NULL)
     {
     }
 
@@ -124,7 +125,7 @@ struct FireworkRule
      * Set all the rule parameters in one go.
      */
     void setParameters(unsigned type, cyclone::real minAge, cyclone::real maxAge,
-        const cyclone::Vector3 &minVelocity, const cyclone::Vector3 &maxVelocity,
+        const cyclone::Vector3& minVelocity, const cyclone::Vector3& maxVelocity,
         cyclone::real damping)
     {
         FireworkRule::type = type;
@@ -140,11 +141,33 @@ struct FireworkRule
      * instance. The optional parent firework is used to base position
      * and velocity on.
      */
-    void create(Firework *firework, const Firework *parent = NULL) const
+    void create(Firework* firework, const Firework* parent = NULL) const
     {
-        
 
+        firework->type = type;
+        firework->age = minAge + (maxAge - minAge) * crandom.randomReal();
+        firework->setMass(1.0f);
+        firework->setDamping(damping);
+        firework->setAcceleration(cyclone::Vector3::GRAVITY);
 
+        cyclone::Vector3 vel;
+        auto rx = crandom.randomReal();
+        auto ry = crandom.randomReal();
+        auto rz = crandom.randomReal();
+        vel = { minVelocity.x + (maxVelocity.x - minVelocity.x) * rx,
+            minVelocity.y + (maxVelocity.y - minVelocity.y * ry),
+            minVelocity.z + (maxVelocity.z - minVelocity.z) * rz };
+        if (parent != NULL)
+        {
+            firework->setPosition(parent->getPosition());
+            firework->setVelocity(parent->getVelocity() + vel);
+        }
+        else
+        {
+            firework->setPosition(0, 0, 0);
+            firework->setVelocity(vel);
+        }
+        firework->clearAccumulator();
 
     }
 };
@@ -172,10 +195,10 @@ class FireworksDemo : public Application
     FireworkRule rules[ruleCount];
 
     /** Dispatches a firework from the origin. */
-    void create(unsigned type, const Firework *parent=NULL);
+    void create(unsigned type, const Firework* parent = NULL);
 
     /** Dispatches the given number of fireworks from the given parent. */
-    void create(unsigned type, unsigned number, const Firework *parent);
+    void create(unsigned type, unsigned number, const Firework* parent);
 
     /** Creates the rules. */
     void initFireworkRules();
@@ -203,13 +226,13 @@ public:
 
 // Method definitions
 FireworksDemo::FireworksDemo()
-:
-nextFirework(0)
+    :
+    nextFirework(0)
 {
     // Make all shots unused
-    for (Firework *firework = fireworks;
-         firework < fireworks+maxFireworks;
-         firework++)
+    for (Firework* firework = fireworks;
+        firework < fireworks + maxFireworks;
+        firework++)
     {
         firework->type = 0;
     }
@@ -229,14 +252,78 @@ void FireworksDemo::initFireworkRules()
     rules[0].setParameters(
         1, // type
         0.5f, 1.4f, // age range
-        cyclone::Vector3(-5, 25, -5), // min velocity
-        cyclone::Vector3(5, 28, 5), // max velocity
+        cyclone::Vector3(-5, -5, -5), // min velocity
+        cyclone::Vector3(5, 15, 5), // max velocity
         0.1 // damping
-        );
+    );
     rules[0].payloads[0].set(3, 5);
     rules[0].payloads[1].set(5, 5);
 
-    // ... and so on for other firework types ...
+    rules[1].init(1);
+    rules[1].setParameters(
+        2, // type
+        0.5f, 1.4f, // age range
+        cyclone::Vector3(-5, -5, -5), // min velocity
+        cyclone::Vector3(5, 15, 5), // max velocity
+        0.1 // damping
+    );
+    rules[1].payloads[0].set(4, 2);
+    rules[2].init(0);
+    rules[2].setParameters(
+        3, // type
+        0.5f, 1.4f, // age range
+        cyclone::Vector3(-5, -5, -5), // min velocity
+        cyclone::Vector3(5, 15, 5), // max velocity
+        0.1 // damping
+    );
+    rules[3].init(0);
+    rules[3].setParameters(
+        4, // type
+        0.5f, 1.4f, // age range
+        cyclone::Vector3(-5, -5, -5), // min velocity
+        cyclone::Vector3(5, 15, 5), // max velocity
+        0.1 // damping
+    );
+    rules[4].init(1);
+    rules[4].setParameters(
+        5, // type
+        0.5f, 1.4f, // age range
+        cyclone::Vector3(-5, -5, -5), // min velocity
+        cyclone::Vector3(5, 15, 5), // max velocity
+        0.1 // damping
+    );
+    rules[4].payloads[0].set(3, 5);
+    rules[5].init(0);
+    rules[5].setParameters(6, // type
+        0.5f, 1.4f, // age range
+        cyclone::Vector3(-5, -5, -5), // min velocity
+        cyclone::Vector3(5, 5, 5), // max velocity
+        0.1 // damping
+    );
+    rules[6].init(1);
+    rules[6].setParameters(7, // type
+        0.5f, 1.4f, // age range
+        cyclone::Vector3(-5, -5, -5), // min velocity
+        cyclone::Vector3(5, 15, 5), // max velocity
+        0.1 // damping
+    );
+    rules[6].payloads[0].set(8, 10);
+    rules[7].init(0);
+    rules[7].setParameters(8, // type
+        0.5f, 1.4f, // age range
+        cyclone::Vector3(-5, -5, -5), // min velocity
+        cyclone::Vector3(5, 15, 5), // max velocity
+        0.1 // damping
+    );
+    rules[8].init(0);
+    rules[8].setParameters(9, // type
+        0.5f, 1.4f, // age range
+        cyclone::Vector3(-5, -5, -5), // min velocity
+        cyclone::Vector3(5, 15, 5), // max velocity
+        0.1 // damping
+    );
+
+
 }
 
 void FireworksDemo::initGraphics()
@@ -253,19 +340,19 @@ const char* FireworksDemo::getTitle()
     return "Cyclone > Fireworks Demo";
 }
 
-void FireworksDemo::create(unsigned type, const Firework *parent)
+void FireworksDemo::create(unsigned type, const Firework* parent)
 {
     // Get the rule needed to create this firework
-    FireworkRule *rule = rules + (type - 1);
+    FireworkRule* rule = rules + (type - 1);
 
     // Create the firework
-    rule->create(fireworks+nextFirework, parent);
+    rule->create(fireworks + nextFirework, parent);
 
     // Increment the index for the next firework
     nextFirework = (nextFirework + 1) % maxFireworks;
 }
 
-void FireworksDemo::create(unsigned type, unsigned number, const Firework *parent)
+void FireworksDemo::create(unsigned type, unsigned number, const Firework* parent)
 {
     for (unsigned i = 0; i < number; i++)
     {
@@ -279,9 +366,9 @@ void FireworksDemo::update()
     float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
     if (duration <= 0.0f) return;
 
-    for (Firework *firework = fireworks;
-         firework < fireworks+maxFireworks;
-         firework++)
+    for (Firework* firework = fireworks;
+        firework < fireworks + maxFireworks;
+        firework++)
     {
         // Check if we need to process this firework.
         if (firework->type > 0)
@@ -290,7 +377,7 @@ void FireworksDemo::update()
             if (firework->update(duration))
             {
                 // Find the appropriate rule
-                FireworkRule *rule = rules + (firework->type-1);
+                FireworkRule* rule = rules + (firework->type - 1);
 
                 // Delete the current firework (this doesn't affect its
                 // position and velocity for passing to the create function,
@@ -301,7 +388,7 @@ void FireworksDemo::update()
                 // Add the payload
                 for (unsigned i = 0; i < rule->payloadCount; i++)
                 {
-                    FireworkRule::Payload * payload = rule->payloads + i;
+                    FireworkRule::Payload* payload = rule->payloads + i;
                     create(payload->type, payload->count, firework);
                 }
             }
@@ -318,12 +405,12 @@ void FireworksDemo::display()
     // Clear the viewport and set the camera direction
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
-    gluLookAt(0.0, 4.0, 10.0,  0.0, 4.0, 0.0,  0.0, 1.0, 0.0);
+    gluLookAt(0.0, 4.0, 10.0, 0.0, 4.0, 0.0, 0.0, 1.0, 0.0);
 
     // Render each firework in turn
     glBegin(GL_QUADS);
-    for (Firework *firework = fireworks;
-        firework < fireworks+maxFireworks;
+    for (Firework* firework = fireworks;
+        firework < fireworks + maxFireworks;
         firework++)
     {
         // Check if we need to process this firework.
@@ -331,28 +418,28 @@ void FireworksDemo::display()
         {
             switch (firework->type)
             {
-            case 1: glColor3f(1,0,0); break;
-            case 2: glColor3f(1,0.5f,0); break;
-            case 3: glColor3f(1,1,0); break;
-            case 4: glColor3f(0,1,0); break;
-            case 5: glColor3f(0,1,1); break;
-            case 6: glColor3f(0.4f,0.4f,1); break;
-            case 7: glColor3f(1,0,1); break;
-            case 8: glColor3f(1,1,1); break;
-            case 9: glColor3f(1,0.5f,0.5f); break;
+            case 1: glColor3f(1, 0, 0); break;
+            case 2: glColor3f(1, 0.5f, 0); break;
+            case 3: glColor3f(1, 1, 0); break;
+            case 4: glColor3f(0, 1, 0); break;
+            case 5: glColor3f(0, 1, 1); break;
+            case 6: glColor3f(0.4f, 0.4f, 1); break;
+            case 7: glColor3f(1, 0, 1); break;
+            case 8: glColor3f(1, 1, 1); break;
+            case 9: glColor3f(1, 0.5f, 0.5f); break;
             };
 
-            const cyclone::Vector3 &pos = firework->getPosition();
-            glVertex3f(pos.x-size, pos.y-size, pos.z);
-            glVertex3f(pos.x+size, pos.y-size, pos.z);
-            glVertex3f(pos.x+size, pos.y+size, pos.z);
-            glVertex3f(pos.x-size, pos.y+size, pos.z);
+            const cyclone::Vector3& pos = firework->getPosition();
+            glVertex3f(pos.x - size, pos.y - size, pos.z);
+            glVertex3f(pos.x + size, pos.y - size, pos.z);
+            glVertex3f(pos.x + size, pos.y + size, pos.z);
+            glVertex3f(pos.x - size, pos.y + size, pos.z);
 
             // Render the firework's reflection
-            glVertex3f(pos.x-size, -pos.y-size, pos.z);
-            glVertex3f(pos.x+size, -pos.y-size, pos.z);
-            glVertex3f(pos.x+size, -pos.y+size, pos.z);
-            glVertex3f(pos.x-size, -pos.y+size, pos.z);
+            glVertex3f(pos.x - size, -pos.y - size, pos.z);
+            glVertex3f(pos.x + size, -pos.y - size, pos.z);
+            glVertex3f(pos.x + size, -pos.y + size, pos.z);
+            glVertex3f(pos.x - size, -pos.y + size, pos.z);
         }
     }
     glEnd();

@@ -41,6 +41,7 @@ class BallisticDemo : public Application
         cyclone::Particle particle;
         ShotType type;
         unsigned startTime;
+        float age;
 
         /** Draws the round. */
         void render()
@@ -123,6 +124,7 @@ void BallisticDemo::fire()
     }
     if (shot >= ammo + ammoRounds) return;
     shot->particle.setPosition(0, 1.5, 0);
+    shot->age = 5.0f;
     switch (currentShotType)
     {
     case PISTOL:
@@ -164,8 +166,10 @@ void BallisticDemo::update()
         if (shot->type != UNUSED)
         {
             shot->particle.integrate(duration);
+            shot->age -= duration;
         }
-        if (shot->particle.getPosition().y <= 0)
+        if (shot->type != UNUSED &&
+            (shot->particle.getPosition().y <= 0.0f || shot->age <= 0.0f || shot->particle.getPosition().z > 200.0f))
         {
             shot->type = UNUSED;
         }
