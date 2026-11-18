@@ -79,6 +79,11 @@ class BallisticDemo : public Application
     /** Dispatches a round. */
     void fire();
 
+    cyclone::ParticleForceRegistry registry;
+    cyclone::ParticleGravity pistolGravity;
+    cyclone::ParticleGravity artilleryGravity;
+    cyclone::ParticleGravity fireballGravity;
+
 public:
     /** Creates a new demo object. */
     BallisticDemo();
@@ -101,7 +106,9 @@ public:
 
 // Method definitions
 BallisticDemo::BallisticDemo()
-: currentShotType(LASER)
+: currentShotType(LASER), pistolGravity(cyclone::Vector3(0.0f, -1.0f, 0.0f)),
+artilleryGravity(cyclone::Vector3(0.0f, -20.0f, 0.0f)),
+fireballGravity(cyclone::Vector3(0.0f, 0.6f, 0.0f))
 {
     // Make all shots unused
     for (AmmoRound *shot = ammo; shot < ammo+ammoRounds; shot++)
@@ -122,56 +129,75 @@ void BallisticDemo::fire()
     {
         if (shot->type == UNUSED) break;
     }
+
     if (shot >= ammo + ammoRounds) return;
-    shot->particle.setPosition(0, 1.5, 0);
-    shot->age = 5.0f;
+
+    registry.remove(&shot->particle, &pistolGravity);
+    registry.remove(&shot->particle, &artilleryGravity);
+    registry.remove(&shot->particle, &fireballGravity);
+
+    shot->particle.setAcceleration(0.0f, 0.0f, 0.0f);
+
     switch (currentShotType)
     {
     case PISTOL:
-        shot->particle.setMass(2.0f); // 2.0kg
-        shot->particle.setVelocity(0.0f, 0.0f, 35.0f); // 35m/s
-        shot->particle.setAcceleration(0.0f, -1.0f, 0.0f);
+        shot->particle.setMass(2.0f);
+        shot->particle.setVelocity(0.0f, 0.0f, 35.0f);
         shot->particle.setDamping(0.99f);
+        registry.add(&shot->particle, &pistolGravity);
         break;
+
     case ARTILLERY:
         shot->particle.setMass(200.0f);
         shot->particle.setVelocity(0.0f, 30.0f, 40.0f);
-        shot->particle.setAcceleration(0.0f, -20.0f, 0.0f);
         shot->particle.setDamping(0.99f);
+        registry.add(&shot->particle, &artilleryGravity);
         break;
+
     case FIREBALL:
         shot->particle.setMass(1.0f);
         shot->particle.setVelocity(0.0f, 0.0f, 10.0f);
-        shot->particle.setAcceleration(0.0f, 0.6f, 0.0f);
-        shot->particle.setDamping(0.90f);
+        shot->particle.setDamping(0.9f);
+        registry.add(&shot->particle, &fireballGravity);
         break;
-    case LASER :
+
+    case LASER:
         shot->particle.setMass(0.1f);
         shot->particle.setVelocity(0.0f, 0.0f, 100.0f);
-        shot->particle.setAcceleration(0.0f, 0.0f, 0.0f);
         shot->particle.setDamping(0.99f);
         break;
     }
+
+    shot->particle.setPosition(0.0f, 1.5f, 0.0f);
+    shot->startTime = TimingData::get().lastFrameTimestamp;
     shot->type = currentShotType;
+
+    shot->particle.clearAccumulator();
 }
 
 void BallisticDemo::update()
 {
     float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
-
     if (duration <= 0.0f) return;
+
+    registry.updateForces(duration);
 
     for (AmmoRound* shot = ammo; shot < ammo + ammoRounds; shot++)
     {
         if (shot->type != UNUSED)
         {
             shot->particle.integrate(duration);
-            shot->age -= duration;
-        }
-        if (shot->type != UNUSED &&
-            (shot->particle.getPosition().y <= 0.0f || shot->age <= 0.0f || shot->particle.getPosition().z > 200.0f))
-        {
-            shot->type = UNUSED;
+
+            if (shot->particle.getPosition().y < 0.0f ||
+                shot->startTime + 5000 < TimingData::get().lastFrameTimestamp ||
+                shot->particle.getPosition().z > 200.0f)
+            {
+                shot->type = UNUSED;
+
+                registry.remove(&shot->particle, &pistolGravity);
+                registry.remove(&shot->particle, &artilleryGravity);
+                registry.remove(&shot->particle, &fireballGravity);
+            }
         }
     }
 

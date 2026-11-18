@@ -32,6 +32,23 @@ void ParticleForceRegistry::add(Particle* particle, ParticleForceGenerator *fg)
     registrations.push_back(registration);
 }
 
+void ParticleForceRegistry::remove(Particle* particle, ParticleForceGenerator* fg)
+{
+    Registry::iterator i = registrations.begin();
+    while (i != registrations.end())
+    {
+        if (i->particle == particle && i->fg == fg)
+            i = registrations.erase(i);
+        else
+            ++i;
+    }
+}
+
+void ParticleForceRegistry::clear()
+{
+    registrations.clear();
+}
+
 ParticleGravity::ParticleGravity(const Vector3& gravity)
 : gravity(gravity)
 {
@@ -39,21 +56,28 @@ ParticleGravity::ParticleGravity(const Vector3& gravity)
 
 void ParticleGravity::updateForce(Particle* particle, real duration)
 {
-    
+    if (!particle->hasFiniteMass()) return;
 
-
+    //F = mxg
+    particle->addForce(gravity * particle->getMass());
 }
 
 ParticleDrag::ParticleDrag(real k1, real k2)
 : k1(k1), k2(k2)
 {
+
 }
 
 void ParticleDrag::updateForce(Particle* particle, real duration)
 {
-    
+    Vector3 force = particle->getVelocity();
+    real speed = force.magnitude();
+    if (speed <= 0.0) return;
+    real dragCoeff = k1 * speed + k2 * speed * speed;
+    force.normalise();
+    force *= -dragCoeff;
 
-
+    particle->addForce(force);
 }
 
 ParticleSpring::ParticleSpring(Particle *other, real sc, real rl)

@@ -268,6 +268,7 @@ void FireworksDemo::initFireworkRules()
         0.1 // damping
     );
     rules[1].payloads[0].set(4, 2);
+
     rules[2].init(0);
     rules[2].setParameters(
         3, // type
@@ -276,6 +277,7 @@ void FireworksDemo::initFireworkRules()
         cyclone::Vector3(5, 15, 5), // max velocity
         0.1 // damping
     );
+
     rules[3].init(0);
     rules[3].setParameters(
         4, // type
@@ -284,6 +286,7 @@ void FireworksDemo::initFireworkRules()
         cyclone::Vector3(5, 15, 5), // max velocity
         0.1 // damping
     );
+
     rules[4].init(1);
     rules[4].setParameters(
         5, // type
@@ -293,6 +296,7 @@ void FireworksDemo::initFireworkRules()
         0.1 // damping
     );
     rules[4].payloads[0].set(3, 5);
+
     rules[5].init(0);
     rules[5].setParameters(6, // type
         0.5f, 1.4f, // age range
@@ -300,6 +304,7 @@ void FireworksDemo::initFireworkRules()
         cyclone::Vector3(5, 5, 5), // max velocity
         0.1 // damping
     );
+
     rules[6].init(1);
     rules[6].setParameters(7, // type
         0.5f, 1.4f, // age range
@@ -308,6 +313,7 @@ void FireworksDemo::initFireworkRules()
         0.1 // damping
     );
     rules[6].payloads[0].set(8, 10);
+
     rules[7].init(0);
     rules[7].setParameters(8, // type
         0.5f, 1.4f, // age range
@@ -315,6 +321,7 @@ void FireworksDemo::initFireworkRules()
         cyclone::Vector3(5, 15, 5), // max velocity
         0.1 // damping
     );
+
     rules[8].init(0);
     rules[8].setParameters(9, // type
         0.5f, 1.4f, // age range
@@ -322,8 +329,6 @@ void FireworksDemo::initFireworkRules()
         cyclone::Vector3(5, 15, 5), // max velocity
         0.1 // damping
     );
-
-
 }
 
 void FireworksDemo::initGraphics()
