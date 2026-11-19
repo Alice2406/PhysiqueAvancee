@@ -11,6 +11,7 @@
  */
 
 #include <stdio.h>
+#include <vector>
 
 #include "../Cyclone_Library/cyclone.h"
 #include "ogl_headers.h"
@@ -19,6 +20,97 @@
 #include <iostream>
 
 static cyclone::Random crandom;
+
+// [EXERCICE 4] Generateur de poussee initiale pour les feux de type 7 pendant 0.75 s
+class FireworkLaunchThrust : public cyclone::ParticleForceGenerator
+{
+public:
+    cyclone::Vector3 thrustForce; // Force de poussee vers le haut (ex: (0, 22, 0))
+    cyclone::real maxThrustTime;  // Duree de propulsion : 0.75 s
+    cyclone::real elapsedSinceSpawn;
+    bool active;
+
+    FireworkLaunchThrust(const cyclone::Vector3& thrust = cyclone::Vector3(0.0f, 22.0f, 0.0f),
+        cyclone::real duration = 0.75f)
+        : thrustForce(thrust), maxThrustTime(duration), elapsedSinceSpawn(0.0f), active(false)
+    {
+    }
+
+    void reset(cyclone::real duration = 0.75f)
+    {
+        maxThrustTime = duration;
+        elapsedSinceSpawn = 0.0f;
+        active = true;
+    }
+
+    void advanceTime(cyclone::real dt)
+    {
+        if (!active) return;
+        elapsedSinceSpawn += dt;
+        if (elapsedSinceSpawn >= maxThrustTime)
+        {
+            active = false;
+        }
+    }
+
+    virtual void updateForce(cyclone::Particle* particle, cyclone::real duration)
+    {
+        if (!active || !particle->hasFiniteMass()) return;
+
+        // Poussee vers le haut pendant les 0.75 premieres secondes uniquement
+        if (elapsedSinceSpawn < maxThrustTime)
+        {
+            particle->addForce(thrustForce);
+        }
+    }
+};
+
+// [EXERCICE 5] Champ de force radial temporaire (0.2 s) declenche a l'explosion d'un feu de type 1
+class FireworkRadialField : public cyclone::ParticleForceGenerator
+{
+public:
+    cyclone::Vector3 center;        // Position d'explosion c
+    cyclone::real radius;           // Rayon R > 0
+    cyclone::real peakStrength;     // Force maximale K > 0 (atteinte a r = R/2)
+    cyclone::real remainingTime;    // Duree de vie restante (0.2 s initialement)
+    const cyclone::Particle* owner; // Particule emettrice (pour ne pas repousser elle-meme)
+
+    FireworkRadialField(const cyclone::Vector3& c,
+        cyclone::real R,
+        cyclone::real K,
+        cyclone::real lifetime = 0.2f,
+        const cyclone::Particle* source = NULL)
+        : center(c), radius(R), peakStrength(K), remainingTime(lifetime), owner(source)
+    {
+    }
+
+    bool isExpired() const
+    {
+        return remainingTime <= 0.0f;
+    }
+
+    void updateLifetime(cyclone::real dt)
+    {
+        remainingTime -= dt;
+    }
+
+    virtual void updateForce(cyclone::Particle* particle, cyclone::real duration)
+    {
+        if (isExpired() || !particle->hasFiniteMass()) return;
+        if (particle == owner) return; // Pousse les AUTRES feux actifs
+
+        cyclone::Vector3 delta = particle->getPosition() - center;
+        cyclone::real r = delta.magnitude();
+
+        if (r < radius && radius > 0.0f)
+        {
+            // F_field = 4 * K * (1 - r / R) * ((p - c) / R) pour 0 <= r < R
+            cyclone::real factor = (cyclone::real)4.0 * peakStrength *
+                ((cyclone::real)1.0 - (r / radius)) / radius;
+            particle->addForce(delta * factor);
+        }
+    }
+};
 
 /**
  * Fireworks are particles, with additional data for rendering and
@@ -143,7 +235,6 @@ struct FireworkRule
      */
     void create(Firework* firework, const Firework* parent = NULL) const
     {
-
         firework->type = type;
         firework->age = minAge + (maxAge - minAge) * crandom.randomReal();
         firework->setMass(1.0f);
@@ -154,9 +245,12 @@ struct FireworkRule
         auto rx = crandom.randomReal();
         auto ry = crandom.randomReal();
         auto rz = crandom.randomReal();
+
+        // [CORRECTION DE BUG] Ajout des parentheses autour de (maxVelocity.y - minVelocity.y)
         vel = { minVelocity.x + (maxVelocity.x - minVelocity.x) * rx,
-            minVelocity.y + (maxVelocity.y - minVelocity.y * ry),
-            minVelocity.z + (maxVelocity.z - minVelocity.z) * rz };
+                minVelocity.y + (maxVelocity.y - minVelocity.y) * ry,
+                minVelocity.z + (maxVelocity.z - minVelocity.z) * rz };
+
         if (parent != NULL)
         {
             firework->setPosition(parent->getPosition());
@@ -168,7 +262,6 @@ struct FireworkRule
             firework->setVelocity(vel);
         }
         firework->clearAccumulator();
-
     }
 };
 
@@ -194,6 +287,11 @@ class FireworksDemo : public Application
     /** Holds the set of rules. */
     FireworkRule rules[ruleCount];
 
+    // [EXERCICE 4 & 5] Registre de forces, poussee par slot pour type 7, et champs radiaux actifs
+    cyclone::ParticleForceRegistry registry;
+    FireworkLaunchThrust slotThrust[maxFireworks];
+    std::vector<FireworkRadialField*> activeRadialFields;
+
     /** Dispatches a firework from the origin. */
     void create(unsigned type, const Firework* parent = NULL);
 
@@ -202,6 +300,12 @@ class FireworksDemo : public Application
 
     /** Creates the rules. */
     void initFireworkRules();
+
+    // [EXERCICE 5] Cree un champ radial temporaire (0.2 s) autour d'une detonation de type 1
+    void spawnRadialField(const cyclone::Vector3& center, const cyclone::Particle* source);
+
+    // [EXERCICE 5] Met a jour la duree de vie des champs radiaux et supprime ceux expires
+    void updateRadialFields(cyclone::real duration);
 
 public:
     /** Creates a new demo object. */
@@ -235,6 +339,8 @@ FireworksDemo::FireworksDemo()
         firework++)
     {
         firework->type = 0;
+        unsigned idx = (unsigned)(firework - fireworks);
+        slotThrust[idx].active = false;
     }
 
     // Create the firework types
@@ -243,6 +349,12 @@ FireworksDemo::FireworksDemo()
 
 FireworksDemo::~FireworksDemo()
 {
+    // [EXERCICE 5] Liberation propre des champs radiaux alloues dynamiquement
+    for (size_t i = 0; i < activeRadialFields.size(); ++i)
+    {
+        delete activeRadialFields[i];
+    }
+    activeRadialFields.clear();
 }
 
 void FireworksDemo::initFireworkRules()
@@ -331,6 +443,46 @@ void FireworksDemo::initFireworkRules()
     );
 }
 
+void FireworksDemo::spawnRadialField(const cyclone::Vector3& center, const cyclone::Particle* source)
+{
+    // [EXERCICE 5] Rayon R = 10.0f, force pic K = 50.0f, duree = 0.2f s
+    FireworkRadialField* field = new FireworkRadialField(center, 10.0f, 50.0f, 0.2f, source);
+    activeRadialFields.push_back(field);
+
+    // Enregistre ce champ sur toutes les autres particules actives
+    for (unsigned i = 0; i < maxFireworks; ++i)
+    {
+        if (fireworks[i].type > 0 && &fireworks[i] != source)
+        {
+            registry.add(&fireworks[i], field);
+        }
+    }
+}
+
+void FireworksDemo::updateRadialFields(cyclone::real duration)
+{
+    // [EXERCICE 5] Met a jour les durees de vie et retire les champs expires
+    for (size_t i = 0; i < activeRadialFields.size(); )
+    {
+        FireworkRadialField* field = activeRadialFields[i];
+        field->updateLifetime(duration);
+
+        if (field->isExpired())
+        {
+            for (unsigned j = 0; j < maxFireworks; ++j)
+            {
+                registry.remove(&fireworks[j], field);
+            }
+            delete field;
+            activeRadialFields.erase(activeRadialFields.begin() + i);
+        }
+        else
+        {
+            ++i;
+        }
+    }
+}
+
 void FireworksDemo::initGraphics()
 {
     // Call the superclass
@@ -350,8 +502,35 @@ void FireworksDemo::create(unsigned type, const Firework* parent)
     // Get the rule needed to create this firework
     FireworkRule* rule = rules + (type - 1);
 
+    unsigned slotIndex = nextFirework;
+    Firework* targetFirework = fireworks + slotIndex;
+
+    // [EXERCICE 4 & 5] Nettoyage des anciennes registrations si le slot est reutilise
+    registry.remove(targetFirework, &slotThrust[slotIndex]);
+    for (size_t i = 0; i < activeRadialFields.size(); ++i)
+    {
+        registry.remove(targetFirework, activeRadialFields[i]);
+    }
+    slotThrust[slotIndex].active = false;
+
     // Create the firework
-    rule->create(fireworks + nextFirework, parent);
+    rule->create(targetFirework, parent);
+
+    // [EXERCICE 4] Si le nouveau feu est de type 7, activer la poussee pendant 0.75 s
+    if (type == 7)
+    {
+        slotThrust[slotIndex].reset(0.75f);
+        registry.add(targetFirework, &slotThrust[slotIndex]);
+    }
+
+    // [EXERCICE 5] Enregistrer les champs radiaux actifs sur cette particule si elle est active
+    for (size_t i = 0; i < activeRadialFields.size(); ++i)
+    {
+        if (targetFirework != activeRadialFields[i]->owner)
+        {
+            registry.add(targetFirework, activeRadialFields[i]);
+        }
+    }
 
     // Increment the index for the next firework
     nextFirework = (nextFirework + 1) % maxFireworks;
@@ -371,6 +550,18 @@ void FireworksDemo::update()
     float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
     if (duration <= 0.0f) return;
 
+    // [EXERCICE 4] Avancer le chronometre de poussee des feux de type 7
+    for (unsigned i = 0; i < maxFireworks; ++i)
+    {
+        if (fireworks[i].type == 7 && slotThrust[i].active)
+        {
+            slotThrust[i].advanceTime(duration);
+        }
+    }
+
+    // [EXERCICE 4 & 5] Evaluer les generateurs de forces AVANT l'integration
+    registry.updateForces(duration);
+
     for (Firework* firework = fireworks;
         firework < fireworks + maxFireworks;
         firework++)
@@ -383,6 +574,21 @@ void FireworksDemo::update()
             {
                 // Find the appropriate rule
                 FireworkRule* rule = rules + (firework->type - 1);
+
+                // [EXERCICE 5] A la detonation d'un feu de type 1, creer un champ radial temporaire (0.2 s)
+                if (firework->type == 1)
+                {
+                    spawnRadialField(firework->getPosition(), firework);
+                }
+
+                // [EXERCICE 4 & 5] Retirer les forces liees a ce slot avant de le desactiver
+                unsigned slotIdx = (unsigned)(firework - fireworks);
+                registry.remove(firework, &slotThrust[slotIdx]);
+                for (size_t k = 0; k < activeRadialFields.size(); ++k)
+                {
+                    registry.remove(firework, activeRadialFields[k]);
+                }
+                slotThrust[slotIdx].active = false;
 
                 // Delete the current firework (this doesn't affect its
                 // position and velocity for passing to the create function,
@@ -399,6 +605,9 @@ void FireworksDemo::update()
             }
         }
     }
+
+    // [EXERCICE 5] Mettre a jour la duree de vie des champs radiaux en fin de pas
+    updateRadialFields(duration);
 
     Application::update();
 }
