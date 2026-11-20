@@ -12,16 +12,15 @@
 
 #include <stdio.h>
 
-#include <cyclone.h>
+#include "../Cyclone_Library/cyclone.h"
 #include "ogl_headers.h"
 #include "app.h"
 #include "timing.h"
 
- // [EXERCICE 3] Nouveau generateur de force local : couloir de vent traversier en +x pour 20 <= z <= 80
 class BallisticCrosswind : public cyclone::ParticleForceGenerator
 {
 public:
-    cyclone::real gustStrength; // Intensite de la rafale en Newtons
+    cyclone::real gustStrength;
     bool enabled;
 
     BallisticCrosswind(cyclone::real strength = 15.0f, bool isEnabled = true)
@@ -34,10 +33,8 @@ public:
         if (!enabled || !particle->hasFiniteMass()) return;
 
         cyclone::Vector3 pos = particle->getPosition();
-        // Force active uniquement dans l'intervalle 20 <= z <= 80
         if (pos.z >= 20.0f && pos.z <= 80.0f)
         {
-            // Poussee dans la direction +x (force nulle hors de l'intervalle)
             particle->addForce(cyclone::Vector3(gustStrength, 0.0f, 0.0f));
         }
     }
@@ -103,21 +100,17 @@ class BallisticDemo : public Application
     /** Dispatches a round. */
     void fire();
 
-    // [EXERCICE 1] Registre et generateurs de gravite par profil
     cyclone::ParticleForceRegistry registry;
     cyclone::ParticleGravity pistolGravity;
     cyclone::ParticleGravity artilleryGravity;
     cyclone::ParticleGravity fireballGravity;
 
-    // [EXERCICE 2] Generateur de trainee aerodynamique et options de comparaison
     cyclone::ParticleDrag dragGenerator;
     bool dragEnabled;
-    bool compareNoDampingMode; // Si vrai, force damping = 1.0f pour comparer trainee vs amortissement
+    bool compareNoDampingMode;
 
-    // [EXERCICE 3] Generateur de vent traversier localise
     BallisticCrosswind crosswindGenerator;
 
-    // [EXERCICE 1/2/3] Utilitaire pour nettoyer toutes les forces enregistrees d'un projectile
     void clearShotForces(cyclone::Particle* particle)
     {
         registry.remove(particle, &pistolGravity);
@@ -147,18 +140,14 @@ public:
     virtual void key(unsigned char key);
 };
 
-// Method definitions
 BallisticDemo::BallisticDemo()
     : currentShotType(LASER),
-    // [EXERCICE 1] Gravites correspondant aux accelerations de chaque profil
     pistolGravity(cyclone::Vector3(0.0f, -1.0f, 0.0f)),
     artilleryGravity(cyclone::Vector3(0.0f, -20.0f, 0.0f)),
     fireballGravity(cyclone::Vector3(0.0f, 0.6f, 0.0f)),
-    // [EXERCICE 2] Coefficients de trainee (k1 lineaire, k2 quadratique)
     dragGenerator(0.05f, 0.01f),
     dragEnabled(false),
     compareNoDampingMode(false),
-    // [EXERCICE 3] Vent traversier initial
     crosswindGenerator(15.0f, false)
 {
     // Make all shots unused
@@ -184,12 +173,10 @@ void BallisticDemo::fire()
 
     if (shot >= ammo + ammoRounds) return;
 
-    // [EXERCICE 1/2/3] Reinitialisation des forces avant d'enregistrer celles du nouveau tir
     clearShotForces(&shot->particle);
     shot->particle.setAcceleration(0.0f, 0.0f, 0.0f);
     shot->particle.clearAccumulator();
 
-    // [EXERCICE 2] Si compareNoDampingMode est actif, on fixe damping = 1.0f pour isoler la trainee
     cyclone::real pistolDamp = compareNoDampingMode ? 1.0f : 0.99f;
     cyclone::real artilleryDamp = compareNoDampingMode ? 1.0f : 0.99f;
     cyclone::real fireballDamp = compareNoDampingMode ? 1.0f : 0.9f;
@@ -201,21 +188,21 @@ void BallisticDemo::fire()
         shot->particle.setMass(2.0f);
         shot->particle.setVelocity(0.0f, 0.0f, 35.0f);
         shot->particle.setDamping(pistolDamp);
-        registry.add(&shot->particle, &pistolGravity); // [EXERCICE 1]
+        registry.add(&shot->particle, &pistolGravity);
         break;
 
     case ARTILLERY:
         shot->particle.setMass(200.0f);
         shot->particle.setVelocity(0.0f, 30.0f, 40.0f);
         shot->particle.setDamping(artilleryDamp);
-        registry.add(&shot->particle, &artilleryGravity); // [EXERCICE 1]
+        registry.add(&shot->particle, &artilleryGravity);
         break;
 
     case FIREBALL:
         shot->particle.setMass(1.0f);
         shot->particle.setVelocity(0.0f, 0.0f, 10.0f);
         shot->particle.setDamping(fireballDamp);
-        registry.add(&shot->particle, &fireballGravity); // [EXERCICE 1]
+        registry.add(&shot->particle, &fireballGravity);
         break;
 
     case LASER:
@@ -225,18 +212,16 @@ void BallisticDemo::fire()
         break;
     }
 
-    // [EXERCICE 2] Enregistrement optionnel de la trainee
     if (dragEnabled)
     {
         registry.add(&shot->particle, &dragGenerator);
     }
 
-    // [EXERCICE 3] Enregistrement du generateur de vent traversier
     registry.add(&shot->particle, &crosswindGenerator);
 
     shot->particle.setPosition(0.0f, 1.5f, 0.0f);
     shot->startTime = TimingData::get().lastFrameTimestamp;
-    shot->age = 5.0f; // [EXERCICE 1/2] Duree de vie max de 5 secondes
+    shot->age = 5.0f;
     shot->type = currentShotType;
 }
 
@@ -245,7 +230,6 @@ void BallisticDemo::update()
     float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
     if (duration <= 0.0f) return;
 
-    // [EXERCICE 1/2/3] Mise a jour de toutes les forces enregistrees AVANT l'integration
     registry.updateForces(duration);
 
     for (AmmoRound* shot = ammo; shot < ammo + ammoRounds; shot++)
@@ -253,14 +237,13 @@ void BallisticDemo::update()
         if (shot->type != UNUSED)
         {
             shot->particle.integrate(duration);
-            shot->age -= duration; // [EXERCICE 1/2] Decrementation de l'age
+            shot->age -= duration;
 
             if (shot->particle.getPosition().y < 0.0f ||
                 shot->age <= 0.0f ||
                 shot->particle.getPosition().z > 200.0f)
             {
                 shot->type = UNUSED;
-                // [EXERCICE 1/2/3] Nettoyage des enregistrements a la suppression du projectile
                 clearShotForces(&shot->particle);
             }
         }
@@ -311,7 +294,6 @@ void BallisticDemo::display()
     glColor3f(0.0f, 0.0f, 0.0f);
     renderText(10.0f, 58.0f, "Click: Fire | 1-4: Ammo | d: Drag | m: Damping=1 | w: Wind | +/-: Wind force");
 
-    // [EXERCICE 2 & 3] Affichage de l'etat de la trainee et du couloir de vent
     char statusBuf[256];
     snprintf(statusBuf, sizeof(statusBuf),
         "Drag: %s | Damping=1 Mode: %s | Crosswind [20..80]: %s (%.1f N)",
@@ -345,7 +327,6 @@ void BallisticDemo::key(unsigned char key)
     case '2': currentShotType = ARTILLERY; break;
     case '3': currentShotType = FIREBALL; break;
     case '4': currentShotType = LASER; break;
-        // [EXERCICE 2] Activer/desactiver la trainee et le mode comparaison sans amortissement
     case 'd':
     case 'D':
         dragEnabled = !dragEnabled;
@@ -354,7 +335,6 @@ void BallisticDemo::key(unsigned char key)
     case 'M':
         compareNoDampingMode = !compareNoDampingMode;
         break;
-        // [EXERCICE 3] Activer/desactiver le vent et ajuster sa puissance
     case 'w':
     case 'W':
         crosswindGenerator.enabled = !crosswindGenerator.enabled;

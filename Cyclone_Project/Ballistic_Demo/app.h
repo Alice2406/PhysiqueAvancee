@@ -11,7 +11,7 @@
  */
 #include <cstdlib>
 
-#include <cyclone.h>
+#include "../Cyclone_Library/cyclone.h"
 /**
  * An application is the base class for all demonstration progams.
  * GLUT is a c-style API, which calls bare functions. This makes

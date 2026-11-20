@@ -84,7 +84,7 @@ namespace cyclone {
          */
         Vector3 particleMovement[2];
 
-    protected:
+    //protected:
         /**
          * Resolves this contact, for both velocity and interpenetration.
          */

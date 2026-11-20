@@ -24,22 +24,62 @@ void ParticleContact::resolve(real duration)
 
 real ParticleContact::calculateSeparatingVelocity() const
 {
-
-    return 0;
+    Vector3 relativeVelocity = particle[0]->getVelocity();
+    if (particle[1])
+    {
+        relativeVelocity -= particle[1]->getVelocity();
+    }
+    return relativeVelocity * contactNormal;
 }
 
 void ParticleContact::resolveVelocity(real duration)
 {
-    
+    real separatingVelocity = calculateSeparatingVelocity();
 
+    real newSepVelocity = -separatingVelocity * restitution;
+    Vector3 accCausedVelocity = particle[0]->getAcceleration();
+    if (particle[1])
+        accCausedVelocity -= particle[1]->getAcceleration();
+    real accCausedSepVelocity = accCausedVelocity * contactNormal * duration;
+    if (accCausedSepVelocity < 0.0)
+    {
+        newSepVelocity += restitution * accCausedSepVelocity;
+        if (newSepVelocity < 0.0) 
+            newSepVelocity = 0.0;
+    }
 
+    real deltaVelocity = newSepVelocity - separatingVelocity;
+
+    real totalInverseMass = particle[0]->getInverseMass();
+    if (particle[1])
+    {
+        totalInverseMass += particle[1]->getInverseMass();
+    }
+    if (totalInverseMass <= 0.0) return;
+    real impulse = deltaVelocity / totalInverseMass;
+    Vector3 impulsePerIMass = contactNormal * impulse;
+    particle[0]->setVelocity(particle[0]->getVelocity() + impulsePerIMass * particle[0]->getInverseMass());
+
+    if (particle[1])
+        particle[1]->setVelocity(particle[1]->getVelocity() + impulsePerIMass * (-particle[1]->getInverseMass()));
 }
 
 void ParticleContact::resolveInterpenetration(real duration)
 {
-    
+    real totalInvMass = particle[0]->getInverseMass();
+    if (particle[1])
+        totalInvMass += particle[1]->getInverseMass();
 
+    Vector3 move = contactNormal * (penetration / totalInvMass);
 
+    particleMovement[0] = move * particle[0]->getInverseMass();
+
+    particle[0]->setPosition(particle[0]->getPosition() + particleMovement[0]);
+    if (particle[1])
+    {
+        particleMovement[1] = move * (-particle[1]->getInverseMass());
+        particle[1]->setPosition(particle[1]->getPosition() + particleMovement[0]);
+    }
 }
 
 ParticleContactResolver::ParticleContactResolver(unsigned iterations)

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "../Cyclone_Library/core.h"
 #include "../Cyclone_Library/particle.h"
+#include "../Cyclone_Library/pcontacts.h"
 
 TEST(TestCaseName, magnitudetest) {
 	cyclone::Vector3 a = {3,4,12};
@@ -55,4 +56,21 @@ TEST(TestCaseName, particuletest) {
 	EXPECT_NEAR(newvel.x, 2, 0.001);
 	EXPECT_NEAR(newvel.y, 0, 0.001);
 	EXPECT_NEAR(newvel.z, 0, 0.001);
+}
+
+TEST(TestCaseName, velocity) {
+	cyclone::ParticleContact p;
+	cyclone::Particle va, vb;
+	p.contactNormal = { 0, 1, 0 };
+	va.setVelocity({ 3, -4, 0 });
+	vb.setVelocity({ 0, 0, 0 });
+	p.particle[0] = &va;
+	p.particle[1] = &vb;
+	cyclone::real vs = p.calculateSeparatingVelocity();
+	EXPECT_NEAR(vs, -4, 0.001);
+}
+
+TEST(TestCaseName, interpenetration)
+{
+
 }

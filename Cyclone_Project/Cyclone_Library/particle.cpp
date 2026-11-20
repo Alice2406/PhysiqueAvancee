@@ -30,8 +30,9 @@ void Particle::integrate(real duration)
     assert(duration > 0.0);
 
     position.addScaledVector(velocity, duration);
-    acceleration = acceleration + (forceAccum * inverseMass);
-    velocity.addScaledVector(acceleration, duration);
+    Vector3 acc = acceleration;
+    acc = acc + (forceAccum * inverseMass);
+    velocity.addScaledVector(acc, duration);
     velocity = velocity * std::pow(damping, duration);
 
     // Clear the forces.

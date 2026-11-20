@@ -17,17 +17,18 @@ using namespace cyclone;
 real ParticleLink::currentLength() const
 {
     Vector3 relativePos = particle[0]->getPosition() -
-                          particle[1]->getPosition();
+        particle[1]->getPosition();
     return relativePos.magnitude();
 }
 
-unsigned ParticleCable::addContact(ParticleContact *contact,
-                                    unsigned limit) const
+unsigned ParticleCable::addContact(ParticleContact* contact,
+    unsigned limit) const
 {
+    if (limit == 0) return 0;
+
     // Find the length of the cable
     real length = currentLength();
 
-    // Check if we're over-extended
     if (length < maxLength)
     {
         return 0;
@@ -39,22 +40,25 @@ unsigned ParticleCable::addContact(ParticleContact *contact,
 
     // Calculate the normal
     Vector3 normal = particle[1]->getPosition() - particle[0]->getPosition();
+    if (normal.squareMagnitude() <= 0.0) return 0;
     normal.normalise();
     contact->contactNormal = normal;
 
-    contact->penetration = length-maxLength;
+    contact->penetration = length - maxLength;
     contact->restitution = restitution;
 
     return 1;
 }
 
-unsigned ParticleRod::addContact(ParticleContact *contact,
-                                  unsigned limit) const
+unsigned ParticleRod::addContact(ParticleContact* contact,
+    unsigned limit) const
 {
+    if (limit == 0) return 0;
+
     // Find the length of the rod
     real currentLen = currentLength();
 
-    // Check if we're over-extended
+    // Check if we're at target length
     if (currentLen == length)
     {
         return 0;
@@ -66,13 +70,15 @@ unsigned ParticleRod::addContact(ParticleContact *contact,
 
     // Calculate the normal
     Vector3 normal = particle[1]->getPosition() - particle[0]->getPosition();
+    if (normal.squareMagnitude() <= (real)0.0) return 0;
     normal.normalise();
 
     // The contact normal depends on whether we're extending or compressing
     if (currentLen > length) {
         contact->contactNormal = normal;
         contact->penetration = currentLen - length;
-    } else {
+    }
+    else {
         contact->contactNormal = normal * -1;
         contact->penetration = length - currentLen;
     }
@@ -89,13 +95,14 @@ real ParticleConstraint::currentLength() const
     return relativePos.magnitude();
 }
 
-unsigned ParticleCableConstraint::addContact(ParticleContact *contact,
-                                   unsigned limit) const
+unsigned ParticleCableConstraint::addContact(ParticleContact* contact,
+    unsigned limit) const
 {
+    if (limit == 0) return 0;
+
     // Find the length of the cable
     real length = currentLength();
 
-    // Check if we're over-extended
     if (length < maxLength)
     {
         return 0;
@@ -107,18 +114,21 @@ unsigned ParticleCableConstraint::addContact(ParticleContact *contact,
 
     // Calculate the normal
     Vector3 normal = anchor - particle->getPosition();
+    if (normal.squareMagnitude() <= 0.0) return 0;
     normal.normalise();
     contact->contactNormal = normal;
 
-    contact->penetration = length-maxLength;
+    contact->penetration = length - maxLength;
     contact->restitution = restitution;
 
     return 1;
 }
 
-unsigned ParticleRodConstraint::addContact(ParticleContact *contact,
-                                 unsigned limit) const
+unsigned ParticleRodConstraint::addContact(ParticleContact* contact,
+    unsigned limit) const
 {
+    if (limit == 0) return 0;
+
     // Find the length of the rod
     real currentLen = currentLength();
 
@@ -134,13 +144,15 @@ unsigned ParticleRodConstraint::addContact(ParticleContact *contact,
 
     // Calculate the normal
     Vector3 normal = anchor - particle->getPosition();
+    if (normal.squareMagnitude() <= 0.0) return 0;
     normal.normalise();
 
     // The contact normal depends on whether we're extending or compressing
     if (currentLen > length) {
         contact->contactNormal = normal;
         contact->penetration = currentLen - length;
-    } else {
+    }
+    else {
         contact->contactNormal = normal * -1;
         contact->penetration = length - currentLen;
     }
